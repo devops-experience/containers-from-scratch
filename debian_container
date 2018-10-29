@@ -1,12 +1,31 @@
-#!/bin/bash -e
+#!/bin/bash -xe
+
+PARENT_DIR="$(readlink -f "$0" | xargs dirname)"
+DEBIAN_ROOTFS="$PARENT_DIR/debian"
+DEMO_CGROUP_PATH="/sys/fs/cgroup/memory/demo"
+
+if [ ! -d "$DEBIAN_ROOTFS" ]
+then
+    mkdir -p debian/
+    # Needs a specific version of debian jessie since the path to the layer.tar differs between images
+    docker save debian:jessie | tar xOf - b16ffa086591ddbd60c4c415b8284a5be77fa7c8ffab761c11dc2ef9e000201f/layer.tar | tar xvf - -C debian
+    sudo cp entrypoint.sh "$DEBIAN_ROOTFS/"
+    sudo chroot debian /bin/mount -t proc proc /proc
+    sudo chroot debian /entrypoint.sh apt-get update
+    sudo chroot debian /entrypoint.sh apt-get install -y pv
+fi
 
 # cgroups
-mkdir -p /sys/fs/cgroup/memory/demo
+mkdir -p "$DEMO_CGROUP_PATH"
 
 # limit ram usage under 100mb
-echo "100000000" | sudo tee /sys/fs/cgroup/memory/demo/memory.limit_in_bytes
-echo "0" | sudo tee /sys/fs/cgroup/memory/demo/memory.swappiness
-echo "$$" | sudo tee /sys/fs/cgroup/memory/demo/tasks
+echo "100000000" | sudo tee "$DEMO_CGROUP_PATH/memory.limit_in_bytes" &>/dev/null
 
-# namespaces
-sudo unshare --pid --fork --net --uts --mount-proc=debian/proc chroot debian $@
+# Deactivate swap
+echo "0" | sudo tee "$DEMO_CGROUP_PATH/memory.swappiness" &>/dev/null
+
+# Add our current process to the cgroup
+echo "$$" | sudo tee "$DEMO_CGROUP_PATH/tasks" &>/dev/null
+
+# Launch the chroot in a forked process and separate namespaces
+sudo unshare --pid --fork --net --uts --mount-proc=debian/proc chroot debian /entrypoint.sh $@

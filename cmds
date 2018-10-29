@@ -19,7 +19,7 @@ echo $$
 cat /etc/*-release
 ps -ef
 ip addr
-apt-get update && apt-get -y install vim
+apt-get update && apt-get -y install pv
 exit
 
 #######################
@@ -36,7 +36,7 @@ ip addr
 ping 8.8.8.8
 hostname
 hostname test
--------------
+# Open a new shell
 
 # See namespaces
 sudo ls -ltr "/proc/$$(pgrep -x dash)/ns" > ns_chroot
@@ -65,3 +65,8 @@ echo "0" >> /sys/fs/cgroup/memory/demo/memory.swappiness
 
 # [inside the container] Test the limit
 yes | tr \\n x | head -c $((1024*1024*1024)) | pv -L $((1024*1024*10)) | grep n
+
+# Script debian_container
+./debian_container ls
+./debian_container /bin/bash
+/debian_container top
