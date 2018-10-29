@@ -7,8 +7,8 @@ DEMO_CGROUP_PATH="/sys/fs/cgroup/memory/demo"
 if [ ! -d "$DEBIAN_ROOTFS" ]
 then
     mkdir -p debian/
-    # Needs a specific version of debian jessie since the path to the layer.tar differs between images
-    docker save debian:jessie | tar xOf - b16ffa086591ddbd60c4c415b8284a5be77fa7c8ffab761c11dc2ef9e000201f/layer.tar | tar xvf - -C debian
+    docker pull debian:jessie-20181011
+    docker save debian:jessie-20181011 | tar xOf - b16ffa086591ddbd60c4c415b8284a5be77fa7c8ffab761c11dc2ef9e000201f/layer.tar | tar xvf - -C debian
     sudo cp entrypoint.sh "$DEBIAN_ROOTFS/"
     sudo chroot debian /bin/mount -t proc proc /proc
     sudo chroot debian /entrypoint.sh apt-get update

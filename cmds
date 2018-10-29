@@ -2,7 +2,7 @@
 
 # Get a rootfs from the official Debian Jessie Docker image
 rm -rf debian && mkdir -p debian/
-# docker pull debian:jessie
+docker pull debian:jessie-20181011
 docker save debian:jessie | tar xOf - b16ffa086591ddbd60c4c415b8284a5be77fa7c8ffab761c11dc2ef9e000201f/layer.tar | tar xvf - -C debian
 
 #######################
