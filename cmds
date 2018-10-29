@@ -1,0 +1,67 @@
+#!/bin/bash -e
+
+# Get a rootfs from the official Debian Jessie Docker image
+rm -rf debian && mkdir -p debian/
+# docker pull debian:jessie
+docker save debian:jessie | tar xOf - b16ffa086591ddbd60c4c415b8284a5be77fa7c8ffab761c11dc2ef9e000201f/layer.tar | tar xvf - -C debian
+
+#######################
+# Isolation with chroot
+#######################
+
+sudo chroot debian /bin/dash
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin
+mount -t proc proc /proc
+
+# We see the host processes
+# We are not isolated !!!
+echo $$
+cat /etc/*-release
+ps -ef
+ip addr
+apt-get update && apt-get -y install vim
+exit
+
+#######################
+# Use namespaces
+#######################
+
+sudo unshare --pid --fork --net --uts --mount-proc=debian/proc chroot debian /bin/dash
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin
+echo $$
+ls /
+cat /etc/*-release
+ps -ef
+ip addr
+ping 8.8.8.8
+hostname
+hostname test
+-------------
+
+# See namespaces
+sudo ls -ltr "/proc/$$(pgrep -x dash)/ns" > ns_chroot
+sudo ls -ltr "/proc/$$/ns" > ns_host
+vimdiff ns_chroot ns_host
+
+#######################
+# Use cgroups
+#######################
+ls /sys/fs/cgroup/
+cd /sys/fs/cgroup/memory
+
+watch -d find /sys/fs/cgroup/memory/docker -type d
+docker run debian:jessie sleep 15
+
+sudo su -
+mkdir -p /sys/fs/cgroup/memory/demo
+ls /sys/fs/cgroup/memory/demo
+
+cat /sys/fs/cgroup/memory/demo/tasks
+echo "$(ps -C dash -o pid --no-headers)" >> /sys/fs/cgroup/memory/demo/tasks
+
+# Limit processes in cgroups to 100MB RAM usage
+echo "100000000" >> /sys/fs/cgroup/memory/demo/memory.limit_in_bytes
+echo "0" >> /sys/fs/cgroup/memory/demo/memory.swappiness
+
+# [inside the container] Test the limit
+yes | tr \\n x | head -c $((1024*1024*1024)) | pv -L $((1024*1024*10)) | grep n

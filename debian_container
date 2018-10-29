@@ -1,0 +1,12 @@
+#!/bin/bash -e
+
+# cgroups
+mkdir -p /sys/fs/cgroup/memory/demo
+
+# limit ram usage under 100mb
+echo "100000000" | sudo tee /sys/fs/cgroup/memory/demo/memory.limit_in_bytes
+echo "0" | sudo tee /sys/fs/cgroup/memory/demo/memory.swappiness
+echo "$$" | sudo tee /sys/fs/cgroup/memory/demo/tasks
+
+# namespaces
+sudo unshare --pid --fork --net --uts --mount-proc=debian/proc chroot debian $@
